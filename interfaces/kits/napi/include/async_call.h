@@ -45,6 +45,13 @@ public:
         {
             errCode_ = errCode;
             errMsg_ = errMsg;
+            numericErrCode_ = false;
+        }
+
+        void SetBusinessErrInfo(int32_t errCode, std::string errMsg)
+        {
+            SetErrInfo(errCode, std::move(errMsg));
+            numericErrCode_ = true;
         }
 
         virtual napi_status operator()(napi_env env, size_t argc, napi_value *argv, napi_value self)
@@ -83,6 +90,7 @@ public:
         OutputAction output_ = nullptr;
         ExecAction exec_ = nullptr;
         int32_t errCode_ = 0;
+        bool numericErrCode_ = false;
         std::string errMsg_;
     };
 

@@ -456,7 +456,10 @@ napi_value SystemPasteboardNapi::GetData(napi_env env, napi_callback_info info)
         PASTEBOARD_HILOGD(PASTEBOARD_MODULE_JS_NAPI, "GetData Begin");
         int32_t ret = PasteboardClient::GetInstance()->GetPasteData(*context->pasteData);
         if (ret == static_cast<int32_t>(PasteboardError::TASK_PROCESSING)) {
-            context->SetErrInfo(ret, "Another getData is being processed");
+            context->SetBusinessErrInfo(ret, "Another getData is being processed");
+        } else if (ret == static_cast<int32_t>(PasteboardError::PERMISSION_VERIFICATION_ERROR)) {
+            context->SetBusinessErrInfo(static_cast<int32_t>(JSErrorCode::NO_PERMISSION),
+                "Permission verification failed. The application cannot read the clipboard.");
         } else {
             context->status = napi_ok;
         }
@@ -1052,6 +1055,18 @@ napi_value SystemPasteboardNapi::GetDataSync(napi_env env, napi_callback_info in
     int32_t ret = (value != nullptr) ? *value : static_cast<int32_t>(PasteboardError::TIMEOUT_ERROR);
     processorEvent->SetEvent("getDataSync", ret, ret == static_cast<int32_t>(PasteboardError::E_OK) ?
         EventReportResult::EVENT_REPORT_SUCCESS : EventReportResult::EVENT_REPORT_FAIL);
+    if (ret == static_cast<int32_t>(PasteboardError::PERMISSION_VERIFICATION_ERROR)) {
+        napi_value message = nullptr;
+        napi_value error = nullptr;
+        napi_value code = nullptr;
+        NAPI_CALL(env, napi_create_string_utf8(env,
+            "Permission verification failed. The application cannot read the clipboard.", NAPI_AUTO_LENGTH, &message));
+        NAPI_CALL(env, napi_create_error(env, nullptr, message, &error));
+        NAPI_CALL(env, napi_create_int32(env, static_cast<int32_t>(JSErrorCode::NO_PERMISSION), &code));
+        NAPI_CALL(env, napi_set_named_property(env, error, "code", code));
+        NAPI_CALL(env, napi_throw(env, error));
+        return nullptr;
+    }
     return instance;
 }
 
